@@ -1,0 +1,2 @@
+// Support TypeScript build
+export {};
