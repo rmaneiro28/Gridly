@@ -64,7 +64,7 @@ const Home = () => {
         {/* Open Graph Tags */}
         <meta property="og:title" content="Gridly BI | Crea el Dashboard de tus sueños en segundos" />
         <meta property="og:description" content="Personaliza y exporta temas JSON profesionales y fondos PNG premium para Power BI Desktop en segundos." />
-        <meta property="og:image" content="/og-brand-v2.png" />
+        <meta property="og:image" content="https://gridlybi.vercel.app/og-brand-v3.png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content="Logo oficial de Gridly BI - Intelligence, Design, Efficiency" />
@@ -78,7 +78,7 @@ const Home = () => {
         <meta property="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Gridly BI | El motor definitivo de temas para Power BI" />
         <meta name="twitter:description" content="Exporta temas JSON y fondos PNG premium con Gridly BI." />
-        <meta name="twitter:image" content="https://gridlybi.vercel.app/og-brand-v2.png" />
+        <meta name="twitter:image" content="https://gridlybi.vercel.app/og-brand-v3.png" />
         <meta name="twitter:site" content="@GridlyBI" />
 
         {/* Favicons (Mirror index.html in Helmet for SSR/Scanners) */}

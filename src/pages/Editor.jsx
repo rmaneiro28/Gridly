@@ -378,7 +378,7 @@ function Editor() {
         {/* Open Graph Tags */}
         <meta property="og:title" content="Editor de Temas Gridly BI | Diseño Profesional para Power BI" />
         <meta property="og:description" content="Configura layouts, colores y exporta temas JSON profesionales en segundos." />
-        <meta property="og:image" content="https://gridlybi.vercel.app/og-image.png" />
+        <meta property="og:image" content="https://gridlybi.vercel.app/og-brand-v3.png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content="Logotipo oficial de Gridly BI - Intelligence, Design, Efficiency" />
@@ -390,7 +390,7 @@ function Editor() {
         <meta name="twitter:card" content="summary_large_image" />
         <meta property="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Editor de Temas Gridly BI | Potencia tus Visualizaciones" />
-        <meta name="twitter:image" content="https://gridlybi.vercel.app/og-image.png" />
+        <meta name="twitter:image" content="https://gridlybi.vercel.app/og-brand-v3.png" />
         <meta name="twitter:site" content="@GridlyBI" />
 
         {/* Favicons */}
