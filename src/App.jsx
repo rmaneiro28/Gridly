@@ -211,6 +211,14 @@ function App() {
   const [selectedIcon, setSelectedIcon] = useState('General');
   const [editingId, setEditingId] = useState(null);
 
+  const [canvasWidth, setCanvasWidth] = useState(1280);
+  const [canvasHeight, setCanvasHeight] = useState(720);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobileMenuTransitioning, setIsMobileMenuTransitioning] = useState(false);
+  
+  const [showFilters, setShowFilters] = useState(true);
+  const [filterPosition, setFilterPosition] = useState('top'); // 'top' or 'right'
+
   const [colors, setColors] = useState({
     sidebar: '#0d1424', accent: '#4f8eff', textActive: '#ffffff',
     textInactive: '#6b7394', canvas: '#0a0b14', background: '#ffffff',
@@ -252,14 +260,42 @@ function App() {
     setPageInput(p.label);
     setSelectedIcon(p.icon);
     setActiveTab('pages');
+    if (window.innerWidth < 768) setIsSidebarOpen(true);
   };
 
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setIsSidebarOpen(false);
+      } else {
+        setIsSidebarOpen(true);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
-    <div className="flex h-screen w-screen bg-[#0a0b14] text-white selection:bg-primary-500/20">
+    <div className="flex flex-col md:flex-row h-screen w-screen bg-[#0a0b14] text-white selection:bg-primary-500/20 overflow-hidden font-sans">
       
+      {/* Mobile Header */}
+      <header className="md:hidden h-16 flex items-center justify-between px-6 bg-black/40 backdrop-blur-xl border-b border-white/5 z-50">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-primary-500/10 border border-primary-500/20"><Layout className="text-primary-400" size={18} /></div>
+          <h2 className="text-base font-bold tracking-tight">Gridly BI</h2>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => setShowExportModal(true)} className="p-2 bg-primary-500/10 text-primary-400 rounded-lg"><Download size={18} /></button>
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-2 rounded-lg transition-colors ${isSidebarOpen ? 'bg-primary-500 text-white' : 'bg-white/5 text-slate-400'}`}>
+             {isSidebarOpen ? <X size={18}/> : <Settings size={18}/>}
+          </button>
+        </div>
+      </header>
+
       {/* Configuration Sidebar */}
-      <aside className="w-80 h-full flex flex-col border-r border-white/5 bg-black/20 backdrop-blur-xl z-20 shrink-0">
-        <header className="p-6 border-b border-white/5">
+      <aside className={`fixed md:relative top-0 left-0 w-full md:w-80 h-[calc(100%-64px)] md:h-full flex flex-col border-r border-white/5 bg-black/40 md:bg-black/20 backdrop-blur-3xl md:backdrop-blur-xl z-40 transition-all duration-500 transform ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-full md:translate-x-0 opacity-0 md:opacity-100 hidden md:flex'}`}>
+        <header className="hidden md:block p-6 border-b border-white/5">
           <div className="flex items-center gap-3 mb-1">
             <div className="p-2 rounded-lg bg-primary-500/10 border border-primary-500/20"><Layout className="text-primary-400" size={20} /></div>
             <h2 className="text-lg font-bold tracking-tight">Gridly BI</h2>
@@ -268,9 +304,12 @@ function App() {
         </header>
 
         {/* Tab Controls */}
-        <div className="flex bg-white/5 border-b border-white/5 p-1 gap-1 m-4 rounded-xl">
-          {[{ id: 'settings', icon: Settings }, { id: 'pages', icon: Layers }, { id: 'layout', icon: LayoutGrid }, { id: 'palette', icon: Palette }].map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex-1 flex justify-center py-2 rounded-lg transition-all duration-300 ${activeTab === tab.id ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}><tab.icon size={18} /></button>
+        <div className="flex bg-white/5 border-b border-white/5 p-1 gap-1 md:m-4 m-6 rounded-2xl">
+          {[{ id: 'settings', icon: Settings, label: 'Ajustes' }, { id: 'pages', icon: Layers, label: 'Páginas' }, { id: 'layout', icon: LayoutGrid, label: 'Layout' }, { id: 'palette', icon: Palette, label: 'Tema' }].map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl transition-all duration-300 ${activeTab === tab.id ? 'bg-primary-500 text-white shadow-xl shadow-primary-500/20' : 'text-slate-500 hover:text-white'}`}>
+              <tab.icon size={18} />
+              <span className="text-[10px] font-bold uppercase md:hidden">{tab.label}</span>
+            </button>
           ))}
         </div>
 
@@ -317,6 +356,52 @@ function App() {
                       )}
                     </div>
                     <input type="text" placeholder="URL del logo (https://...)" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-[10px] mt-2 focus:border-primary-500 focus:outline-none" />
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-white/5">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Dimensiones del Lienzo</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-400">Ancho (px)</label>
+                      <input 
+                        type="number" 
+                        value={canvasWidth} 
+                        onChange={(e) => setCanvasWidth(Number(e.target.value))} 
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:border-primary-500 focus:outline-none" 
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-400">Alto (px)</label>
+                      <input 
+                        type="number" 
+                        value={canvasHeight} 
+                        onChange={(e) => setCanvasHeight(Number(e.target.value))} 
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:border-primary-500 focus:outline-none" 
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
+                    {[
+                      { label: '16:9', w: 1280, h: 720 },
+                      { label: '9:16', w: 720, h: 1280 },
+                      { label: '4:3', w: 1024, h: 768 },
+                      { label: 'FHD H', w: 1920, h: 1080 },
+                      { label: 'FHD V', w: 1080, h: 1920 },
+                    ].map(preset => (
+                      <button 
+                        key={preset.label}
+                        onClick={() => { setCanvasWidth(preset.w); setCanvasHeight(preset.h); }}
+                        className={`px-3 py-1.5 rounded-lg border text-[9px] whitespace-nowrap transition-all ${
+                          canvasWidth === preset.w && canvasHeight === preset.h 
+                            ? 'bg-primary-500/20 border-primary-500 text-primary-400' 
+                            : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -384,9 +469,28 @@ function App() {
               </motion.div>
             )}
 
-            {/* Other tabs remain similar but with consistent styling */}
+            {/* Tab: Layout & Inteligence */}
             {activeTab === 'layout' && (
-              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-4">
+              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-6">
+                 <div>
+                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-3">Sección de Filtros (Slicers)</label>
+                   <div className="space-y-3 bg-white/5 p-4 rounded-2xl border border-white/5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-300">Activar Filtros</span>
+                        <button onClick={() => setShowFilters(!showFilters)} className={`w-10 h-5 rounded-full transition-colors relative ${showFilters ? 'bg-primary-500' : 'bg-slate-700'}`}>
+                          <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${showFilters ? 'left-6' : 'left-1'}`}></div>
+                        </button>
+                      </div>
+                      
+                      {showFilters && (
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                           <button onClick={() => setFilterPosition('top')} className={`py-2 text-[10px] rounded-lg border transition-all ${filterPosition === 'top' ? 'bg-primary-500/20 border-primary-500 text-primary-400' : 'bg-white/5 border-white/10 text-slate-500'}`}>Superior (Slicers)</button>
+                           <button onClick={() => setFilterPosition('right')} className={`py-2 text-[10px] rounded-lg border transition-all ${filterPosition === 'right' ? 'bg-primary-500/20 border-primary-500 text-primary-400' : 'bg-white/5 border-white/10 text-slate-500'}`}>Lateral Derecha</button>
+                        </div>
+                      )}
+                   </div>
+                 </div>
+
                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Distribución Inteligente</label>
                  <div className="grid grid-cols-1 gap-3">
                    {LAYOUT_MODELS.map(l => (
@@ -427,7 +531,7 @@ function App() {
           </AnimatePresence>
         </div>
 
-        <footer className="p-6 border-t border-white/5">
+        <footer className="p-6 border-t border-white/5 hidden md:block">
           <button 
             onClick={() => setShowExportModal(true)}
             className="w-full py-4 bg-primary-500 hover:bg-primary-600 active:scale-95 transition-all rounded-2xl font-bold flex items-center justify-center gap-2 shadow-2xl shadow-primary-500/30 font-sans tracking-tight"
@@ -437,9 +541,20 @@ function App() {
         </footer>
       </aside>
 
-      {/* Preview Area (Identical to previous but ensuring logo display) */}
-      <main className="flex-1 h-full flex flex-col relative bg-gradient-to-br from-[#0c1021] to-[#04060c]">
-        <nav className="h-16 flex items-center justify-between px-8 border-b border-white/5 bg-black/10 backdrop-blur-md z-10">
+      {/* Mobile Bottom Nav Overlay (Floating when sidebar closed) */}
+      {!isSidebarOpen && (
+        <nav className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] bg-black/60 backdrop-blur-2xl border border-white/10 p-2 rounded-3xl flex items-center justify-between z-50 shadow-2xl">
+          {[{ id: 'settings', icon: Settings }, { id: 'pages', icon: Layers }, { id: 'layout', icon: LayoutGrid }, { id: 'palette', icon: Palette }].map(tab => (
+            <button key={tab.id} onClick={() => { setActiveTab(tab.id); setIsSidebarOpen(true); }} className={`p-4 rounded-2xl transition-all ${activeTab === tab.id ? 'bg-primary-500 text-white' : 'text-slate-500'}`}><tab.icon size={20} /></button>
+          ))}
+          <div className="w-px h-8 bg-white/10 mx-2"></div>
+          <button onClick={() => setShowExportModal(true)} className="p-4 bg-white/10 text-white rounded-2xl"><Download size={20} /></button>
+        </nav>
+      )}
+
+      {/* Preview Area */}
+      <main className="flex-1 h-full flex flex-col relative bg-gradient-to-br from-[#0c1021] to-[#04060c] overflow-hidden">
+        <nav className="h-16 hidden md:flex items-center justify-between px-8 border-b border-white/5 bg-black/10 backdrop-blur-md z-10">
           <div className="flex items-center gap-2"><span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Vista Previa v2.0</span></div>
           <div className="flex items-center gap-3">
              <div className="flex gap-2 mr-4"><div className="w-2 h-2 rounded-full bg-red-500/50"></div><div className="w-2 h-2 rounded-full bg-yellow-500/50"></div><div className="w-2 h-2 rounded-full bg-green-500/50"></div></div>
@@ -447,7 +562,7 @@ function App() {
           </div>
         </nav>
 
-        <div className="flex-1 flex items-center justify-center p-8 relative overflow-hidden transition-colors duration-700" style={{ backgroundColor: themeMode === 'light' ? '#f1f5f9' : 'transparent' }}>
+        <div className="flex-1 flex items-center justify-center p-8 relative overflow-auto transition-colors duration-700" style={{ backgroundColor: themeMode === 'light' ? '#f1f5f9' : 'transparent' }}>
           <AnimatePresence>
             {showExportModal && (
               <ExportModal 
@@ -464,8 +579,8 @@ function App() {
                           const dataUrl = await htmlToImage.toPng(element, { 
                             quality: 1, 
                             pixelRatio: 1,
-                            width: 1280,
-                            height: 720,
+                            width: canvasWidth,
+                            height: canvasHeight,
                             style: { 
                               backgroundColor: themeMode === 'light' ? '#ffffff' : (colors.canvas || '#0a0b14'),
                               transform: 'scale(1)',
@@ -475,8 +590,8 @@ function App() {
                               padding: '0',
                               overflow: 'hidden',
                               display: 'flex',
-                              width: '1280px',
-                              height: '720px'
+                              width: `${canvasWidth}px`,
+                              height: `${canvasHeight}px`
                             }
                           });
                           const link = document.createElement('a');
@@ -498,20 +613,25 @@ function App() {
             )}
           </AnimatePresence>
           
-          <div className="scale-[0.55] lg:scale-[0.7] xl:scale-[0.85] origin-center transition-transform duration-500">
+          <div className="scale-[0.28] sm:scale-[0.4] md:scale-[0.5] lg:scale-[0.6] xl:scale-[0.7] 2xl:scale-[0.8] origin-center transition-transform duration-700 ease-out">
             <div 
               id="dashboard-preview-main-container" 
-              className={`w-[1280px] h-[720px] bg-black overflow-hidden flex transition-all duration-700 ${
+              style={{ 
+                width: `${canvasWidth}px`, 
+                height: `${canvasHeight}px`,
+                transform: `translateX(0)` // Removed fixed scale, handled by parent
+              }}
+              className={`bg-black overflow-hidden flex transition-all duration-700 ${
                 isExportingImage 
                   ? 'rounded-none shadow-none border-none' 
                   : `rounded-[40px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)] border-[16px] ${themeMode === 'light' ? 'border-slate-200 shadow-slate-300/30' : 'border-slate-900/50'}`
               }`}
             >
-              <div className="flex-1 flex overflow-hidden" style={{ backgroundColor: themeMode === 'light' ? '#ffffff' : colors.canvas }}>
+              <div className="flex-1 flex overflow-hidden h-full" style={{ backgroundColor: themeMode === 'light' ? '#ffffff' : colors.canvas }}>
               
               {/* Preview Sidebar */}
-              <motion.aside animate={{ width: menuType === 'Fixed' ? 240 : 84 }} style={{ backgroundColor: themeMode === 'light' ? '#f8fafc' : colors.sidebar }} className={`h-full border-r ${themeMode === 'light' ? 'border-slate-200' : 'border-white/5'} flex flex-col py-8 px-5 shrink-0 transition-all duration-300`}>
-                <div className="flex items-center gap-4 mb-12 px-1 overflow-hidden">
+              <motion.aside animate={{ width: menuType === 'Fixed' ? 240 : 84 }} style={{ backgroundColor: themeMode === 'light' ? '#f8fafc' : colors.sidebar }} className={`h-full border-r ${themeMode === 'light' ? 'border-slate-200' : 'border-white/5'} flex flex-col py-8 px-5 shrink-0 transition-all duration-300 overflow-hidden`}>
+                <div className="flex items-center gap-4 mb-12 px-1">
                   <div className="w-10 h-10 flex items-center justify-center shrink-0">
                     {logoUrl ? <img src={logoUrl} className="max-w-full max-h-full object-contain" /> : <div className="w-full h-full rounded-2xl bg-primary-500 flex items-center justify-center font-black text-2xl text-white shadow-lg">G</div>}
                   </div>
@@ -559,114 +679,155 @@ function App() {
                   </div>
                 </header>
 
-                <div 
-                  id="dashboard-preview-main"
-                  style={{ 
-                    backgroundColor: themeMode === 'light' ? '#f8fafc' : (colors.canvas || '#0a0b14'),
-                    gridTemplateRows: activeLayout === 'standard' ? '0.8fr 1fr 1fr' : 
-                                     activeLayout === 'executive' ? '0.8fr 1.2fr' :
-                                     activeLayout === 'analytical' ? '0.8fr 1fr 1fr 1fr' :
-                                     'repeat(6, 1fr)'
-                  }}
-                  className={`flex-1 grid gap-4 transition-all duration-700 p-6 rounded-[20px] border ${themeMode === 'light' ? 'border-slate-100' : 'border-white/5'} ${
-                    activeLayout === 'standard' ? 'grid-cols-4' : 
-                    activeLayout === 'executive' ? 'grid-cols-4' : 
-                    activeLayout === 'analytical' ? 'grid-cols-4' : 
-                    'grid-cols-6'
-                  }`}
-                >
-                  {/* KPI 1 */}
-                  <div className={`${
-                    activeLayout === 'standard' ? 'col-span-1 row-span-1' : 
-                    activeLayout === 'executive' ? 'col-span-1 row-span-1' : 
-                    activeLayout === 'analytical' ? 'col-span-1 row-span-1' : 
-                    'col-span-2 row-span-2'
-                  }`}>
-                    <KpiCard title="Ingresos Totales" value="$42.1k" change="+12%" color={colors.accent} icon={TrendingUp} hideContent={isExportingImage} themeMode={themeMode} />
-                  </div>
+                <div className="flex-1 flex gap-4 overflow-hidden">
+                  <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+                    {/* Horizontal Filter Bar */}
+                    {showFilters && filterPosition === 'top' && (
+                      <div className="flex gap-4 shrink-0 transition-all duration-500">
+                        {['Fecha', 'Categoría', 'Región', 'Vendedor'].map((f, i) => (
+                           <div key={i} className={`flex-1 px-4 py-3 rounded-xl border flex items-center justify-between ${themeMode === 'light' ? 'bg-white border-slate-100' : 'bg-white/5 border-white/5'}`}>
+                              <span className="text-[10px] font-bold opacity-60 uppercase">{f}</span>
+                              <ChevronDown size={12} className="opacity-40" />
+                           </div>
+                        ))}
+                      </div>
+                    )}
 
-                  {/* KPI 2 */}
-                  <div className={`${
-                    activeLayout === 'standard' ? 'col-span-1 row-span-1' : 
-                    activeLayout === 'executive' ? 'col-span-1 row-span-1' : 
-                    activeLayout === 'analytical' ? 'col-span-1 row-span-1' : 
-                    'col-span-2 row-span-2'
-                  }`}>
-                    <KpiCard title="Conversion" value="3.2%" change="-1%" color="#f87171" icon={Activity} hideContent={isExportingImage} themeMode={themeMode} />
-                  </div>
+                    <div 
+                      id="dashboard-preview-main"
+                      style={{ 
+                        backgroundColor: themeMode === 'light' ? '#f8fafc' : (colors.canvas || '#0a0b14'),
+                        gridTemplateRows: activeLayout === 'standard' ? '0.8fr 1fr 1fr' : 
+                                         activeLayout === 'executive' ? '0.8fr 1.2fr' :
+                                         activeLayout === 'analytical' ? '0.8fr 1fr 1fr 1fr' :
+                                         'repeat(6, 1fr)'
+                      }}
+                      className={`flex-1 grid gap-4 transition-all duration-700 p-6 rounded-[20px] border ${themeMode === 'light' ? 'border-slate-100' : 'border-white/5'} ${
+                        activeLayout === 'standard' ? 'grid-cols-4' : 
+                        activeLayout === 'executive' ? 'grid-cols-4' : 
+                        activeLayout === 'analytical' ? 'grid-cols-4' : 
+                        'grid-cols-6'
+                      }`}
+                    >
+                      {/* KPI 1 */}
+                      <div className={`${
+                        activeLayout === 'standard' ? 'col-span-1 row-span-1' : 
+                        activeLayout === 'executive' ? 'col-span-1 row-span-1' : 
+                        activeLayout === 'analytical' ? 'col-span-1 row-span-1' : 
+                        'col-span-2 row-span-2'
+                      }`}>
+                        <KpiCard title="Ingresos Totales" value="$42.1k" change="+12%" color={colors.accent} icon={TrendingUp} hideContent={isExportingImage} themeMode={themeMode} />
+                      </div>
 
-                  {/* KPI 3 */}
-                  <div className={`${
-                    activeLayout === 'standard' ? 'col-span-1 row-span-1' : 
-                    activeLayout === 'executive' ? 'col-span-1 row-span-1' : 
-                    activeLayout === 'analytical' ? 'col-span-1 row-span-1' : 
-                    'col-span-2 row-span-2'
-                  }`}>
-                    <KpiCard title="Pedidos" value="1,290" change="+8%" color={colors.accent} icon={ShoppingCart} hideContent={isExportingImage} themeMode={themeMode} />
-                  </div>
+                      {/* KPI 2 */}
+                      <div className={`${
+                        activeLayout === 'standard' ? 'col-span-1 row-span-1' : 
+                        activeLayout === 'executive' ? 'col-span-1 row-span-1' : 
+                        activeLayout === 'analytical' ? 'col-span-1 row-span-1' : 
+                        'col-span-2 row-span-2'
+                      }`}>
+                        <KpiCard title="Conversion" value="3.2%" change="-1%" color="#f87171" icon={Activity} hideContent={isExportingImage} themeMode={themeMode} />
+                      </div>
 
-                  {/* Donut / Secondary Metric */}
-                  <div className={`${
-                    activeLayout === 'standard' ? 'col-span-1 row-span-1' : 
-                    activeLayout === 'executive' ? 'col-span-1 row-span-1' : 
-                    activeLayout === 'analytical' ? 'col-span-1 row-span-2' : 
-                    'col-span-2 row-span-3'
-                  }`}>
-                    <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} h-full flex items-center justify-center transition-all duration-500`}>
-                       <DonutPlaceholder color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
-                    </div>
-                  </div>
+                      {/* KPI 3 */}
+                      <div className={`${
+                        activeLayout === 'standard' ? 'col-span-1 row-span-1' : 
+                        activeLayout === 'executive' ? 'col-span-1 row-span-1' : 
+                        activeLayout === 'analytical' ? 'col-span-1 row-span-1' : 
+                        'col-span-2 row-span-2'
+                      }`}>
+                        <KpiCard title="Pedidos" value="1,290" change="+8%" color={colors.accent} icon={ShoppingCart} hideContent={isExportingImage} themeMode={themeMode} />
+                      </div>
 
-                  {/* Main Chart */}
-                  <div className={`${
-                    activeLayout === 'standard' ? 'col-span-3 row-span-2' : 
-                    activeLayout === 'executive' ? 'col-span-4 row-span-1' : 
-                    activeLayout === 'analytical' ? 'col-span-3 row-span-2' : 
-                    'col-span-4 row-span-3'
-                  }`}>
-                    <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} h-full transition-all duration-500`}>
-                       <ChartPlaceholder color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
-                    </div>
-                  </div>
-
-                  {/* KPI 4 / Rebote */}
-                  <div className={`${
-                    activeLayout === 'standard' ? 'hidden' : 
-                    activeLayout === 'executive' ? 'hidden' : 
-                    activeLayout === 'analytical' ? 'col-span-1 row-span-1' : 
-                    'col-span-2 row-span-1'
-                  }`}>
-                    <KpiCard title="Rebote" value="42%" change="+2%" color="#fbbf24" icon={Zap} hideContent={isExportingImage} themeMode={themeMode} />
-                  </div>
-
-                  {/* Layout Specific Components */}
-                  {activeLayout === 'standard' && (
-                    <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} col-span-1 row-span-2 transition-all duration-500`}>
-                       <TopPerformers color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
-                    </div>
-                  )}
-
-                  {activeLayout === 'modern' && (
-                    <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} col-span-2 row-span-1 transition-all duration-500`}>
-                       <TopPerformers color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
-                    </div>
-                  )}
-
-                  {activeLayout === 'modern' && (
-                    <div className={`col-span-2 row-span-1 transition-all duration-500 ${isExportingImage ? 'opacity-0' : 'opacity-100'} ${themeMode === 'light' ? 'light-card border-primary-500/10' : 'glass-card border-primary-500/20 bg-primary-500/10'}`}>
-                      <div className="flex items-center gap-4 h-full px-6">
-                        <div className="p-3 rounded-xl bg-primary-500 text-white shadow-lg shadow-primary-500/30"><Target size={20} /></div>
-                        <div>
-                          <p className={`text-[10px] font-bold uppercase ${themeMode === 'light' ? 'text-slate-400' : 'text-slate-400'}`}>Meta Lograda</p>
-                          <p className={`text-lg font-black ${themeMode === 'light' ? 'text-slate-800' : 'text-white'}`}>94.2%</p>
+                      {/* Donut / Secondary Metric */}
+                      <div className={`${
+                        activeLayout === 'standard' ? 'col-span-1 row-span-1' : 
+                        activeLayout === 'executive' ? 'col-span-1 row-span-1' : 
+                        activeLayout === 'analytical' ? 'col-span-1 row-span-2' : 
+                        'col-span-2 row-span-3'
+                      }`}>
+                        <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} h-full flex items-center justify-center transition-all duration-500`}>
+                           <DonutPlaceholder color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
                         </div>
                       </div>
-                    </div>
-                  )}
 
-                  {activeLayout === 'analytical' && (
-                    <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} col-span-4 row-span-1 transition-all duration-500 overflow-hidden`}>
-                       <DataTable color={colors.accent} title="Desglose por Canal" hideContent={isExportingImage} themeMode={themeMode} />
+                      {/* Main Chart */}
+                      <div className={`${
+                        activeLayout === 'standard' ? 'col-span-3 row-span-2' : 
+                        activeLayout === 'executive' ? 'col-span-4 row-span-1' : 
+                        activeLayout === 'analytical' ? 'col-span-3 row-span-2' : 
+                        'col-span-4 row-span-3'
+                      }`}>
+                        <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} h-full transition-all duration-500`}>
+                           <ChartPlaceholder color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
+                        </div>
+                      </div>
+
+                      {/* KPI 4 / Rebote */}
+                      <div className={`${
+                        activeLayout === 'standard' ? 'hidden' : 
+                        activeLayout === 'executive' ? 'hidden' : 
+                        activeLayout === 'analytical' ? 'col-span-1 row-span-1' : 
+                        'col-span-2 row-span-1'
+                      }`}>
+                        <KpiCard title="Rebote" value="42%" change="+2%" color="#fbbf24" icon={Zap} hideContent={isExportingImage} themeMode={themeMode} />
+                      </div>
+
+                      {/* Layout Specific Components */}
+                      {activeLayout === 'standard' && (
+                        <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} col-span-1 row-span-2 transition-all duration-500`}>
+                           <TopPerformers color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
+                        </div>
+                      )}
+
+                      {activeLayout === 'modern' && (
+                        <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} col-span-2 row-span-1 transition-all duration-500`}>
+                           <TopPerformers color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
+                        </div>
+                      )}
+
+                      {activeLayout === 'modern' && (
+                        <div className={`col-span-2 row-span-1 transition-all duration-500 ${isExportingImage ? 'opacity-0' : 'opacity-100'} ${themeMode === 'light' ? 'light-card border-primary-500/10' : 'glass-card border-primary-500/20 bg-primary-500/10'}`}>
+                          <div className="flex items-center gap-4 h-full px-6">
+                            <div className="p-3 rounded-xl bg-primary-500 text-white shadow-lg shadow-primary-500/30"><Target size={20} /></div>
+                            <div>
+                              <p className={`text-[10px] font-bold uppercase ${themeMode === 'light' ? 'text-slate-400' : 'text-slate-400'}`}>Meta Lograda</p>
+                              <p className={`text-lg font-black ${themeMode === 'light' ? 'text-slate-800' : 'text-white'}`}>94.2%</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeLayout === 'analytical' && (
+                        <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} col-span-4 row-span-1 transition-all duration-500 overflow-hidden`}>
+                           <DataTable color={colors.accent} title="Desglose por Canal" hideContent={isExportingImage} themeMode={themeMode} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Vertical Filter Bar (Right Sidebar style) */}
+                  {showFilters && filterPosition === 'right' && (
+                    <div className={`w-64 shrink-0 p-6 rounded-[20px] border flex flex-col gap-6 animate-in slide-in-from-right duration-500 ${themeMode === 'light' ? 'bg-white border-slate-200 shadow-sm' : 'bg-white/5 border-white/5 shadow-2xl'}`}>
+                      <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Filtros Avanzados</span>
+                        <Filter size={14} className="text-primary-400" />
+                      </div>
+                      <div className="space-y-6">
+                        {['Fecha de Datos', 'Estado de Orden', 'Canal de Distribución'].map((f, i) => (
+                           <div key={i} className="space-y-2">
+                             <label className="text-[9px] font-bold uppercase text-slate-500">{f}</label>
+                             <div className={`px-4 py-3 rounded-xl border flex items-center justify-between ${themeMode === 'light' ? 'bg-slate-50 border-slate-100' : 'bg-black/20 border-white/5'}`}>
+                               <span className="text-xs opacity-40">Seleccionar...</span>
+                               <ChevronDown size={14} className="opacity-20" />
+                             </div>
+                           </div>
+                        ))}
+                      </div>
+                      <div className="mt-auto space-y-2">
+                        <button className="w-full py-3 bg-primary-500 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider">Aplicar Filtros</button>
+                        <button className="w-full py-3 bg-white/5 text-slate-400 rounded-xl text-[10px] font-bold uppercase tracking-wider">Limpiar</button>
+                      </div>
                     </div>
                   )}
                 </div>
