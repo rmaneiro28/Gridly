@@ -70,12 +70,21 @@ const Home = () => {
         <meta property="og:image:alt" content="Logotipo oficial de Gridly BI - Intelligence, Design, Efficiency" />
         <meta property="og:url" content="https://gridlybi.vercel.app/" />
         <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Gridly BI" />
+        <meta property="og:locale" content="es_ES" />
         
-        {/* Twitter Tags (using name attribute) */}
+        {/* Twitter Tags (Twin tags for name and property for maximum compatibility) */}
         <meta name="twitter:card" content="summary_large_image" />
+        <meta property="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Gridly BI | El motor definitivo de temas para Power BI" />
         <meta name="twitter:description" content="Exporta temas JSON y fondos PNG premium para Power BI Desktop." />
         <meta name="twitter:image" content="https://gridlybi.vercel.app/og-image.png" />
+        <meta name="twitter:site" content="@GridlyBI" />
+
+        {/* Favicons (Mirror index.html in Helmet for SSR/Scanners) */}
+        <link rel="icon" type="image/png" sizes="32x32" href="/Logo.png" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
       </Helmet>
 
       {/* --- HERO SECTION --- (the rest remains inside main layout z-10) */}

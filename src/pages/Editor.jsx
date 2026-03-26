@@ -372,7 +372,7 @@ function Editor() {
     <div className="flex flex-col md:flex-row h-screen w-screen bg-[#0a0b14] text-white selection:bg-primary-500/20 overflow-hidden font-sans">
       <Helmet>
         <title>Editor Dinámico | Personaliza tu Tema de Power BI con Gridly BI</title>
-        <meta name="description" content="Editor profesional de Gridly BI: exporta temas JSON y fondos PNG premium para tus dashboards de Power BI." />
+        <meta name="description" content="Editor profesional de Gridly BI: exporta temas JSON y fondos PNG premium para Power BI Desktop." />
         <link rel="canonical" href="https://gridlybi.vercel.app/editor" />
         
         {/* Open Graph Tags */}
@@ -383,11 +383,20 @@ function Editor() {
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content="Logotipo oficial de Gridly BI - Intelligence, Design, Efficiency" />
         <meta property="og:url" content="https://gridlybi.vercel.app/editor" />
+        <meta property="og:site_name" content="Gridly BI" />
+        <meta property="og:locale" content="es_ES" />
         
-        {/* Twitter Tags */}
+        {/* Twitter Tags (Twin tags) */}
         <meta name="twitter:card" content="summary_large_image" />
+        <meta property="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Editor de Temas Gridly BI | Potencia tus Visualizaciones" />
         <meta name="twitter:image" content="https://gridlybi.vercel.app/og-image.png" />
+        <meta name="twitter:site" content="@GridlyBI" />
+
+        {/* Favicons */}
+        <link rel="icon" type="image/png" sizes="32x32" href="/Logo.png" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
       </Helmet>
       
       {/* Mobile Header */}
