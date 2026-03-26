@@ -63,22 +63,22 @@ const Home = () => {
         
         {/* Open Graph Tags */}
         <meta property="og:title" content="Gridly BI | Crea el Dashboard de tus sueños en segundos" />
-        <meta property="og:description" content="Exporta temas JSON y fondos PNG premium directamente para Power BI Desktop." />
-        <meta property="og:image" content="https://gridlybi.vercel.app/og-image.png" />
+        <meta property="og:description" content="Personaliza y exporta temas JSON profesionales y fondos PNG premium para Power BI Desktop en segundos." />
+        <meta property="og:image" content="/og-brand-v2.png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="Logotipo oficial de Gridly BI - Intelligence, Design, Efficiency" />
+        <meta property="og:image:alt" content="Logo oficial de Gridly BI - Intelligence, Design, Efficiency" />
         <meta property="og:url" content="https://gridlybi.vercel.app/" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Gridly BI" />
         <meta property="og:locale" content="es_ES" />
         
-        {/* Twitter Tags (Twin tags for name and property for maximum compatibility) */}
+        {/* Twitter Tags */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta property="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Gridly BI | El motor definitivo de temas para Power BI" />
-        <meta name="twitter:description" content="Exporta temas JSON y fondos PNG premium para Power BI Desktop." />
-        <meta name="twitter:image" content="https://gridlybi.vercel.app/og-image.png" />
+        <meta name="twitter:description" content="Exporta temas JSON y fondos PNG premium con Gridly BI." />
+        <meta name="twitter:image" content="https://gridlybi.vercel.app/og-brand-v2.png" />
         <meta name="twitter:site" content="@GridlyBI" />
 
         {/* Favicons (Mirror index.html in Helmet for SSR/Scanners) */}
@@ -102,10 +102,8 @@ const Home = () => {
           <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Diseñalo. Exprortalo. Triunfa en BI.</span>
         </motion.div>
 
-        <h1 className="text-5xl md:text-8xl font-black tracking-tighter mb-8 leading-[1.05]">
-          <motion.span initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }} className="block">
-            Crea el <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-indigo-400">Dashboard de tus sueños</span> en Segundos.
-          </motion.span>
+        <h1 className="text-5xl md:text-8xl font-black tracking-tighter mb-8 leading-[1.05] block">
+          Crea el <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-indigo-400">Dashboard de tus sueños</span> en Segundos.
         </h1>
 
         <motion.p
