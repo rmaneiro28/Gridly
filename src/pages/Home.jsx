@@ -58,20 +58,23 @@ const Home = () => {
     <Layout>
       <Helmet>
         <title>Gridly BI | El motor definitivo de temas para Power BI</title>
-        <meta name="description" content="Diseña, personaliza y exporta temas profesionales para Power BI en segundos. Optimiza tus dashboards con fondos PNG y temas JSON premium con Gridly BI." />
+        <meta name="description" content="Diseña, personaliza y exporta temas profesionales para Power BI Desktop en segundos con Gridly BI." />
         <link rel="canonical" href="https://gridlybi.vercel.app/" />
         
-        {/* Open Graph Tags for Social Engagement */}
+        {/* Open Graph Tags */}
         <meta property="og:title" content="Gridly BI | Crea el Dashboard de tus sueños en segundos" />
-        <meta property="og:description" content="Lleva tus reportes de Power BI al siguiente nivel con temas personalizados, exportación JSON y fondos PNG premium." />
+        <meta property="og:description" content="Exporta temas JSON y fondos PNG premium directamente para Power BI Desktop." />
         <meta property="og:image" content="https://gridlybi.vercel.app/og-image.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Logotipo oficial de Gridly BI - Intelligence, Design, Efficiency" />
         <meta property="og:url" content="https://gridlybi.vercel.app/" />
         <meta property="og:type" content="website" />
         
-        {/* Twitter Specific Tags */}
+        {/* Twitter Tags (using name attribute) */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Gridly BI | Diseño de dashboards Power BI sin límites" />
-        <meta name="twitter:description" content="Exporta temas JSON y fondos PNG premium directamente para Power BI Desktop." />
+        <meta name="twitter:title" content="Gridly BI | El motor definitivo de temas para Power BI" />
+        <meta name="twitter:description" content="Exporta temas JSON y fondos PNG premium para Power BI Desktop." />
         <meta name="twitter:image" content="https://gridlybi.vercel.app/og-image.png" />
       </Helmet>
 
@@ -90,14 +93,11 @@ const Home = () => {
           <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Diseñalo. Exprortalo. Triunfa en BI.</span>
         </motion.div>
 
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="text-5xl md:text-8xl font-black tracking-tighter mb-8 leading-[1.05]"
-        >
-          Crea el <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-indigo-400">Dashboard de tus sueños</span> en Segundos.
-        </motion.h1>
+        <h1 className="text-5xl md:text-8xl font-black tracking-tighter mb-8 leading-[1.05]">
+          <motion.span initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }} className="block">
+            Crea el <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-indigo-400">Dashboard de tus sueños</span> en Segundos.
+          </motion.span>
+        </h1>
 
         <motion.p
           initial={{ opacity: 0, y: 20 }}

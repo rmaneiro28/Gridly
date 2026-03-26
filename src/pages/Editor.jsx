@@ -372,13 +372,16 @@ function Editor() {
     <div className="flex flex-col md:flex-row h-screen w-screen bg-[#0a0b14] text-white selection:bg-primary-500/20 overflow-hidden font-sans">
       <Helmet>
         <title>Editor Dinámico | Personaliza tu Tema de Power BI con Gridly BI</title>
-        <meta name="description" content="Utiliza el editor profesional de Gridly BI para configurar colores, layouts adaptativos y exportar archivos JSON y PNG para tus dashboards de Power BI." />
+        <meta name="description" content="Editor profesional de Gridly BI: exporta temas JSON y fondos PNG premium para tus dashboards de Power BI." />
         <link rel="canonical" href="https://gridlybi.vercel.app/editor" />
         
         {/* Open Graph Tags */}
         <meta property="og:title" content="Editor de Temas Gridly BI | Diseño Profesional para Power BI" />
-        <meta property="og:description" content="Configura layouts, colores y exporta temas JSON profesionales en segundos con el editor de Gridly BI." />
+        <meta property="og:description" content="Configura layouts, colores y exporta temas JSON profesionales en segundos." />
         <meta property="og:image" content="https://gridlybi.vercel.app/og-image.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Logotipo oficial de Gridly BI - Intelligence, Design, Efficiency" />
         <meta property="og:url" content="https://gridlybi.vercel.app/editor" />
         
         {/* Twitter Tags */}
