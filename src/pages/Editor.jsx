@@ -103,6 +103,7 @@ import {
   FileJson
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Helmet } from 'react-helmet-async';
 import * as htmlToImage from 'html-to-image';
 
 // Massive Icon Library for BI
@@ -184,10 +185,11 @@ const PALETTES = [
 ];
 
 const LAYOUT_MODELS = [
-  { id: 'standard', name: 'Standard Grid', icon: LayoutGrid },
-  { id: 'executive', name: 'Executive Focus', icon: Columns },
-  { id: 'analytical', name: 'Analytical Layers', icon: Rows },
+  { id: 'standard', name: 'Estándar', icon: LayoutGrid },
+  { id: 'executive', name: 'Ejecutivo', icon: Monitor },
+  { id: 'analytical', name: 'Analítico', icon: BarChart3 },
   { id: 'modern', name: 'Modern Cluster', icon: Box },
+  { id: 'custom', name: 'Diseño Libre', icon: Columns },
 ];
 
 function Editor() {
@@ -215,6 +217,9 @@ function Editor() {
   const [canvasHeight, setCanvasHeight] = useState(720);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuTransitioning, setIsMobileMenuTransitioning] = useState(false);
+  const [previewScale, setPreviewScale] = useState(0.6);
+  const previewContainerRef = useRef(null);
+  const dashboardRef = useRef(null);
   
   const [showFilters, setShowFilters] = useState(true);
   const [filterPosition, setFilterPosition] = useState('top'); 
@@ -223,8 +228,35 @@ function Editor() {
     textInactive: '#6b7394', canvas: '#0a0b14', background: '#ffffff',
   });
 
+  const [filters, setFilters] = useState([
+    { id: 1, label: 'Fecha', icon: 'Calendario' },
+    { id: 2, label: 'Categoría', icon: 'Filter' },
+    { id: 3, label: 'Región', icon: 'Ubicacion' },
+    { id: 4, label: 'Vendedor', icon: 'Clientes' }
+  ]);
+
+  const [customCards, setCustomCards] = useState([
+    { id: 1, type: 'kpi', title: 'Ingresos Totales', value: '$42.1k', change: '+12%', color: '#4f8eff', icon: 'Ventas', cols: 2, rows: 1 },
+    { id: 2, type: 'kpi', title: 'Conversión', value: '3.2%', change: '-1%', color: '#f87171', icon: 'Stats', cols: 2, rows: 1 },
+    { id: 3, type: 'chart', title: 'Tendencia', cols: 4, rows: 2 },
+    { id: 4, type: 'donut', title: 'Ventas', cols: 2, rows: 2 },
+    { id: 5, type: 'table', title: 'Ventas por Región', cols: 6, rows: 2 }
+  ]);
+
   const [activeLayout, setActiveLayout] = useState('standard');
   const [activeTab, setActiveTab ] = useState('settings');
+
+  // Aspect Ratio & Layout Detection
+  const aspectRatio = canvasWidth / canvasHeight;
+  const isVertical = canvasHeight > canvasWidth;
+  const isSquareish = aspectRatio >= 0.9 && aspectRatio <= 1.4; // 1:1, 4:3, etc.
+  
+  // Dynamic Grid Settings based on format
+  const getGridCols = () => {
+    if (isVertical) return 'grid-cols-2';
+    if (isSquareish) return 'grid-cols-3';
+    return activeLayout === 'custom' ? 'grid-cols-6' : 'grid-cols-4';
+  };
 
   // Logo Drag & Drop handlers
   const onDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
@@ -262,6 +294,62 @@ function Editor() {
     if (window.innerWidth < 768) setIsSidebarOpen(true);
   };
 
+  const moveCard = (id, direction) => {
+    setCustomCards(prevCards => {
+      const index = prevCards.findIndex(card => card.id === id);
+      if (index === -1) return prevCards;
+
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= prevCards.length) return prevCards;
+
+      const newCards = [...prevCards];
+      const [movedCard] = newCards.splice(index, 1);
+      newCards.splice(newIndex, 0, movedCard);
+      return newCards;
+    });
+  };
+
+  const updateCardSize = (id, dimension, change) => {
+    setCustomCards(prevCards => prevCards.map(card => {
+      if (card.id === id) {
+        let newValue = card[dimension] + change;
+        // Define min/max for cols and rows
+        if (dimension === 'cols') {
+          newValue = Math.max(1, Math.min(6, newValue)); // Max 6 columns
+        } else if (dimension === 'rows') {
+          newValue = Math.max(1, Math.min(4, newValue)); // Max 4 rows
+        }
+        return { ...card, [dimension]: newValue };
+      }
+      return card;
+    }));
+  };
+
+  const handleFullscreen = () => {
+    if (dashboardRef.current) {
+      if (!document.fullscreenElement) {
+        dashboardRef.current.requestFullscreen().catch(err => {
+          alert(`Error al intentar activar pantalla completa: ${err.message}`);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    }
+  };
+
+  const updateScale = () => {
+    if (!previewContainerRef.current) return;
+    const padding = 120; // Margin around the preview
+    const availableWidth = previewContainerRef.current.clientWidth - padding;
+    const availableHeight = previewContainerRef.current.clientHeight - padding;
+    
+    const scaleX = availableWidth / canvasWidth;
+    const scaleY = availableHeight / canvasHeight;
+    const newScale = Math.min(scaleX, scaleY);
+    
+    setPreviewScale(newScale);
+  };
+
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 1024) {
@@ -269,14 +357,35 @@ function Editor() {
       } else {
         setIsSidebarOpen(true);
       }
+      updateScale();
     };
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+     updateScale();
+  }, [canvasWidth, canvasHeight, isSidebarOpen]);
+
   return (
     <div className="flex flex-col md:flex-row h-screen w-screen bg-[#0a0b14] text-white selection:bg-primary-500/20 overflow-hidden font-sans">
+      <Helmet>
+        <title>Editor Dinámico | Personaliza tu Tema de Power BI con Gridly BI</title>
+        <meta name="description" content="Utiliza el editor profesional de Gridly BI para configurar colores, layouts adaptativos y exportar archivos JSON y PNG para tus dashboards de Power BI." />
+        <link rel="canonical" href="https://gridlybi.vercel.app/editor" />
+        
+        {/* Open Graph Tags */}
+        <meta property="og:title" content="Editor de Temas Gridly BI | Diseño Profesional para Power BI" />
+        <meta property="og:description" content="Configura layouts, colores y exporta temas JSON profesionales en segundos con el editor de Gridly BI." />
+        <meta property="og:image" content="https://gridlybi.vercel.app/og-image.png" />
+        <meta property="og:url" content="https://gridlybi.vercel.app/editor" />
+        
+        {/* Twitter Tags */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Editor de Temas Gridly BI | Potencia tus Visualizaciones" />
+        <meta name="twitter:image" content="https://gridlybi.vercel.app/og-image.png" />
+      </Helmet>
       
       {/* Mobile Header */}
       <header className="md:hidden h-16 flex items-center justify-between px-6 bg-black/40 backdrop-blur-xl border-b border-white/5 z-50">
@@ -296,7 +405,7 @@ function Editor() {
       <aside className={`fixed md:relative top-0 left-0 w-full md:w-80 h-[calc(100%-64px)] md:h-full flex flex-col border-r border-white/5 bg-black/40 md:bg-black/20 backdrop-blur-3xl md:backdrop-blur-xl z-40 transition-all duration-500 transform ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-full md:translate-x-0 opacity-0 md:opacity-100 hidden md:flex'}`}>
         <header className="hidden md:block p-6 border-b border-white/5">
           <div className="flex items-center gap-3 mb-1">
-            <div className="p-2 rounded-lg bg-primary-500/10 border border-primary-500/20"><Layout className="text-primary-400" size={20} /></div>
+            <img src="/Logo.png" className="w-8 h-8 object-contain rounded-lg" alt="Gridly Logo" />
             <h2 className="text-lg font-bold tracking-tight">Gridly BI</h2>
           </div>
           <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Dashboard Theme Engine</p>
@@ -472,8 +581,8 @@ function Editor() {
             {activeTab === 'layout' && (
               <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-6">
                  <div>
-                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-3">Sección de Filtros (Slicers)</label>
-                   <div className="space-y-3 bg-white/5 p-4 rounded-2xl border border-white/5">
+                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-3">Configuración de Filtros (Slicers)</label>
+                   <div className="space-y-4 bg-white/5 p-4 rounded-2xl border border-white/5">
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-slate-300">Activar Filtros</span>
                         <button onClick={() => setShowFilters(!showFilters)} className={`w-10 h-5 rounded-full transition-colors relative ${showFilters ? 'bg-primary-500' : 'bg-slate-700'}`}>
@@ -482,22 +591,118 @@ function Editor() {
                       </div>
                       
                       {showFilters && (
-                        <div className="grid grid-cols-2 gap-2 mt-2">
-                           <button onClick={() => setFilterPosition('top')} className={`py-2 text-[10px] rounded-lg border transition-all ${filterPosition === 'top' ? 'bg-primary-500/20 border-primary-500 text-primary-400' : 'bg-white/5 border-white/10 text-slate-500'}`}>Superior (Slicers)</button>
-                           <button onClick={() => setFilterPosition('right')} className={`py-2 text-[10px] rounded-lg border transition-all ${filterPosition === 'right' ? 'bg-primary-500/20 border-primary-500 text-primary-400' : 'bg-white/5 border-white/10 text-slate-500'}`}>Lateral Derecha</button>
-                        </div>
+                        <>
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                             <button onClick={() => setFilterPosition('top')} className={`py-2 text-[10px] rounded-lg border transition-all ${filterPosition === 'top' ? 'bg-primary-500/20 border-primary-500 text-primary-400' : 'bg-white/5 border-white/10 text-slate-500'}`}>Superior (Slicers)</button>
+                             <button onClick={() => setFilterPosition('right')} className={`py-2 text-[10px] rounded-lg border transition-all ${filterPosition === 'right' ? 'bg-primary-500/20 border-primary-500 text-primary-400' : 'bg-white/5 border-white/10 text-slate-500'}`}>Lateral Derecha</button>
+                          </div>
+
+                          <div className="pt-4 border-t border-white/5 space-y-3">
+                            <div className="flex justify-between items-center px-1">
+                              <label className="text-[10px] text-slate-500 uppercase font-black">Filtros Activos ({filters.length})</label>
+                              <button onClick={() => setFilters([...filters, { id: Date.now(), label: 'Nuevo Filtro', icon: 'Filter' }])} className="text-primary-400 hover:text-white transition-colors"><Plus size={14} /></button>
+                            </div>
+                            <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                              {filters.map(f => {
+                                const IconComp = ICON_MAP[f.icon] || Filter;
+                                return (
+                                  <div key={f.id} className="flex gap-2 items-center group">
+                                    <div className="relative group/icon flex-shrink-0">
+                                      <div className="p-2 bg-white/5 rounded-lg text-slate-500 group-hover:bg-white/10 cursor-pointer">
+                                        <IconComp size={14} />
+                                      </div>
+                                      <div className="absolute left-0 top-full mt-2 hidden group-hover/icon:grid grid-cols-4 gap-1 p-2 bg-slate-900 border border-white/10 rounded-xl z-50 w-32 shadow-2xl">
+                                        {['Calendario', 'Filter', 'Ubicacion', 'Clientes', 'Ventas', 'Stats', 'Busqueda', 'Archivos'].map(k => {
+                                          const PickIcon = ICON_MAP[k] || Filter;
+                                          return <button key={k} onClick={() => setFilters(filters.map(x => x.id === f.id ? { ...x, icon: k } : x))} className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white"><PickIcon size={12} /></button>
+                                        })}
+                                      </div>
+                                    </div>
+                                    <input 
+                                      type="text" 
+                                      value={f.label} 
+                                      onChange={(e) => setFilters(filters.map(x => x.id === f.id ? { ...x, label: e.target.value } : x))}
+                                      className="flex-1 bg-transparent border-b border-white/5 py-1 text-xs focus:border-primary-500 focus:outline-none"
+                                    />
+                                    <button onClick={() => setFilters(filters.filter(x => x.id !== f.id))} className="text-slate-600 hover:text-red-400 transition-colors pt-1"><X size={12} /></button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </>
                       )}
                    </div>
                  </div>
 
-                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Distribución Inteligente</label>
-                 <div className="grid grid-cols-1 gap-3">
-                   {LAYOUT_MODELS.map(l => (
-                     <button key={l.id} onClick={() => setActiveLayout(l.id)} className={`w-full p-4 rounded-xl border flex items-center gap-4 transition-all ${activeLayout === l.id ? 'bg-primary-500/10 border-primary-500' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
-                       <div className={`p-3 rounded-lg ${activeLayout === l.id ? 'bg-primary-500 text-white' : 'bg-white/5 text-slate-500'}`}><l.icon size={20} /></div>
-                       <div className="text-left"><p className="text-sm font-bold">{l.name}</p><p className="text-[10px] text-slate-500">Distribución optimizada</p></div>
-                     </button>
-                   ))}
+                 <div className="space-y-4">
+                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Distribución de Pantalla</label>
+                   <div className="grid grid-cols-1 gap-2">
+                     {LAYOUT_MODELS.map(l => (
+                       <button key={l.id} onClick={() => setActiveLayout(l.id)} className={`w-full p-4 rounded-xl border flex items-center gap-4 transition-all ${activeLayout === l.id ? 'bg-primary-500/10 border-primary-500' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
+                         <div className={`p-3 rounded-lg ${activeLayout === l.id ? 'bg-primary-500 text-white shadow-xl shadow-primary-500/20' : 'bg-white/5 text-slate-500'}`}><l.icon size={20} /></div>
+                         <div className="text-left">
+                           <p className="text-sm font-bold">{l.name}</p>
+                           <p className="text-[10px] text-slate-500">{l.id === 'custom' ? 'Añade y organiza componentes' : 'Plantilla inteligente'}</p>
+                         </div>
+                       </button>
+                     ))}
+                   </div>
+                   
+                   {activeLayout === 'custom' && (
+                     <div className="p-4 bg-primary-500/5 border border-primary-500/20 rounded-2xl animate-in fade-in duration-500">
+                        <div className="flex justify-between items-center mb-4">
+                           <label className="text-[10px] text-primary-400 uppercase font-black">Componentes Personalizados</label>
+                                            <button 
+                              onClick={() => setCustomCards([...customCards, { id: Date.now(), type: 'kpi', title: 'Nueva Métrica', value: '0', change: '0%', color: colors.accent, icon: 'Stats', cols: 2, rows: 1 }])}
+                              className="text-xs bg-primary-500 text-white px-3 py-1 rounded-lg font-bold"
+                            >+ Añadir</button>
+                         </div>
+                         <div className="space-y-3">
+                            {customCards.map(c => (
+                              <div key={c.id} className="flex flex-col p-4 bg-black/40 rounded-2xl border border-white/5 gap-3 shadow-lg">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                     <div className="flex flex-col gap-0.5">
+                                        <button onClick={() => moveCard(c.id, -1)} className="text-slate-600 hover:text-white transition-colors"><ChevronUp size={14} /></button>
+                                        <button onClick={() => moveCard(c.id, 1)} className="text-slate-600 hover:text-white transition-colors"><ChevronDown size={14} /></button>
+                                     </div>
+                                     <span className="text-[10px] font-black text-slate-300 uppercase truncate max-w-[120px]">{c.title || 'Componente'}</span>
+                                  </div>
+                                  <button onClick={() => setCustomCards(customCards.filter(x => x.id !== c.id))} className="text-slate-600 hover:text-red-400 transition-colors"><Trash2 size={12} /></button>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                   <div className="flex-1 space-y-1">
+                                      <p className="text-[8px] text-slate-500 uppercase font-black px-1">Columnas ({c.cols})</p>
+                                      <div className="flex gap-1">
+                                         <button onClick={() => updateCardSize(c.id, 'cols', -1)} className="flex-1 h-6 bg-white/5 hover:bg-white/10 rounded flex items-center justify-center text-xs">-</button>
+                                         <button onClick={() => updateCardSize(c.id, 'cols', 1)} className="flex-1 h-6 bg-white/5 hover:bg-white/10 rounded flex items-center justify-center text-xs">+</button>
+                                      </div>
+                                   </div>
+                                   <div className="flex-1 space-y-1">
+                                      <p className="text-[8px] text-slate-500 uppercase font-black px-1">Filas ({c.rows})</p>
+                                      <div className="flex gap-1">
+                                         <button onClick={() => updateCardSize(c.id, 'rows', -1)} className="flex-1 h-6 bg-white/5 hover:bg-white/10 rounded flex items-center justify-center text-xs">-</button>
+                                         <button onClick={() => updateCardSize(c.id, 'rows', 1)} className="flex-1 h-6 bg-white/5 hover:bg-white/10 rounded flex items-center justify-center text-xs">+</button>
+                                      </div>
+                                   </div>
+                                </div>
+                                <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1">
+                                 {['kpi', 'chart', 'donut', 'table'].map(type => (
+                                   <button 
+                                     key={type} 
+                                     onClick={() => setCustomCards(customCards.map(x => x.id === c.id ? { ...x, type } : x))}
+                                     className={`px-2 py-1 rounded text-[8px] font-bold uppercase transition-all ${c.type === type ? 'bg-primary-500 text-white' : 'bg-white/5 text-slate-500'}`}
+                                   >
+                                     {type}
+                                   </button>
+                                 ))}
+                               </div>
+                             </div>
+                           ))}
+                        </div>
+                     </div>
+                   )}
                  </div>
               </motion.div>
             )}
@@ -552,7 +757,7 @@ function Editor() {
       )}
 
       {/* Preview Area */}
-      <main className="flex-1 h-full flex flex-col relative bg-gradient-to-br from-[#0c1021] to-[#04060c] overflow-hidden">
+      <main ref={previewContainerRef} className="flex-1 h-full flex flex-col relative bg-gradient-to-br from-[#0c1021] to-[#04060c] overflow-hidden">
         <nav className="h-16 hidden md:flex items-center justify-between px-8 border-b border-white/5 bg-black/10 backdrop-blur-md z-10">
           <div className="flex items-center gap-2"><span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Vista Previa v2.0</span></div>
           <div className="flex items-center gap-3">
@@ -561,12 +766,14 @@ function Editor() {
           </div>
         </nav>
 
-        <div className="flex-1 flex items-center justify-center p-8 relative overflow-auto transition-colors duration-700" style={{ backgroundColor: themeMode === 'light' ? '#f1f5f9' : 'transparent' }}>
+        <div className="flex-1 flex items-center justify-center p-8 relative overflow-hidden transition-colors duration-700" style={{ backgroundColor: themeMode === 'light' ? '#f1f5f9' : 'transparent' }}>
           <AnimatePresence>
             {showExportModal && (
               <ExportModal 
                 isOpen={showExportModal} 
                 themeMode={themeMode}
+                colors={colors}
+                activeLayout={activeLayout}
                 onClose={async (type) => {
                   setShowExportModal(false);
                   if (type === 'image') {
@@ -606,19 +813,21 @@ function Editor() {
                     }, 800);
                   }
                 }} 
-                colors={colors} 
-                activeLayout={activeLayout} 
               />
             )}
           </AnimatePresence>
-          
-          <div className="scale-[0.28] sm:scale-[0.4] md:scale-[0.5] lg:scale-[0.6] xl:scale-[0.7] 2xl:scale-[0.8] origin-center transition-transform duration-700 ease-out">
+
+          <div 
+            className="transition-transform duration-700 ease-out flex items-center justify-center pointer-events-none"
+            style={{ transform: `scale(${previewScale})` }}
+          >
             <div 
               id="dashboard-preview-main-container" 
+              ref={dashboardRef}
               style={{ 
                 width: `${canvasWidth}px`, 
                 height: `${canvasHeight}px`,
-                transform: `translateX(0)` // Removed fixed scale, handled by parent
+                pointerEvents: 'auto'
               }}
               className={`bg-black overflow-hidden flex transition-all duration-700 ${
                 isExportingImage 
@@ -626,31 +835,44 @@ function Editor() {
                   : `rounded-[40px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)] border-[16px] ${themeMode === 'light' ? 'border-slate-200 shadow-slate-300/30' : 'border-slate-900/50'}`
               }`}
             >
-              <div className="flex-1 flex overflow-hidden h-full" style={{ backgroundColor: themeMode === 'light' ? '#ffffff' : colors.canvas }}>
+              <div className={`flex-1 flex ${isVertical ? 'flex-col' : 'flex-row'} overflow-hidden h-full`} style={{ backgroundColor: themeMode === 'light' ? '#ffffff' : colors.canvas }}>
               
-              {/* Preview Sidebar */}
-              <motion.aside animate={{ width: menuType === 'Fixed' ? 240 : 84 }} style={{ backgroundColor: themeMode === 'light' ? '#f8fafc' : colors.sidebar }} className={`h-full border-r ${themeMode === 'light' ? 'border-slate-200' : 'border-white/5'} flex flex-col py-8 px-5 shrink-0 transition-all duration-300 overflow-hidden`}>
-                <div className="flex items-center gap-4 mb-12 px-1">
-                  <div className="w-10 h-10 flex items-center justify-center shrink-0">
-                    {logoUrl ? <img src={logoUrl} className="max-w-full max-h-full object-contain" /> : <div className="w-full h-full rounded-2xl bg-primary-500 flex items-center justify-center font-black text-2xl text-white shadow-lg">G</div>}
+              {/* Preview Sidebar / Navigation */}
+              <motion.aside 
+                animate={{ 
+                  width: isVertical ? '100%' : (menuType === 'Fixed' ? 240 : 84),
+                  height: isVertical ? (isExportingImage ? 0 : 80) : '100%'
+                }} 
+                style={{ 
+                  backgroundColor: themeMode === 'light' ? '#f8fafc' : colors.sidebar,
+                  order: isVertical ? 2 : 1
+                }} 
+                className={`border-r ${themeMode === 'light' ? 'border-slate-200' : 'border-white/5'} flex ${isVertical ? 'flex-row px-8 items-center justify-around' : 'flex-col py-8 px-5'} shrink-0 transition-all duration-300 overflow-hidden ${isVertical && !isExportingImage ? 'border-t shadow-[0_-10px_30px_rgba(0,0,0,0.5)]' : ''}`}
+              >
+                {!isVertical && (
+                  <div className="flex items-center gap-4 mb-12 px-1">
+                    <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                      {logoUrl ? <img src={logoUrl} className="max-w-full max-h-full object-contain" /> : <div className="w-full h-full rounded-2xl bg-primary-500 flex items-center justify-center font-black text-2xl text-white shadow-lg">G</div>}
+                    </div>
+                    {menuType === 'Fixed' && <div className="truncate"><h4 className="font-bold text-sm tracking-tight" style={{ color: themeMode === 'light' ? '#0f172a' : colors.textActive }}>{reportName}</h4><p className="text-[10px] opacity-60" style={{ color: themeMode === 'light' ? '#64748b' : colors.textInactive }}>{subtitle}</p></div>}
                   </div>
-                  {menuType === 'Fixed' && <div className="truncate"><h4 className="font-bold text-sm tracking-tight" style={{ color: themeMode === 'light' ? '#0f172a' : colors.textActive }}>{reportName}</h4><p className="text-[10px] opacity-60" style={{ color: themeMode === 'light' ? '#64748b' : colors.textInactive }}>{subtitle}</p></div>}
-                </div>
+                )}
 
-                <div className="space-y-2.5 flex-1 overflow-y-auto no-scrollbar">
+                <div className={`flex ${isVertical ? 'flex-row w-full justify-around gap-2' : 'flex-col gap-2.5'} flex-1 overflow-y-auto no-scrollbar`}>
                   {pages.map((p) => {
                     const IconComp = ICON_MAP[p.icon] || BarChart3;
                     const isActive = activePageId === p.id;
                     return (
-                      <div key={p.id} onClick={() => setActivePageId(p.id)} className={`flex items-center gap-4 p-3.5 rounded-2xl cursor-pointer transition-all ${isActive ? (themeMode === 'light' ? 'bg-primary-500/10' : 'bg-white/10') : (themeMode === 'light' ? 'hover:bg-slate-100' : 'hover:bg-white/[0.03]')}`} style={{ borderLeft: isActive ? `4px solid ${colors.accent}` : '4px solid transparent', backgroundColor: isActive ? (themeMode === 'light' ? colors.accent + '10' : colors.accent + '15') : 'transparent' }}>
-                        <IconComp size={20} style={{ color: isActive ? colors.accent : (themeMode === 'light' ? '#94a3b8' : colors.textInactive) }} />
-                        {menuType === 'Fixed' && <span className="text-[13px] font-bold truncate" style={{ color: isActive ? (themeMode === 'light' ? '#0f172a' : colors.textActive) : (themeMode === 'light' ? '#94a3b8' : colors.textInactive) }}>{p.label}</span>}
+                      <div key={p.id} onClick={() => setActivePageId(p.id)} className={`flex items-center gap-4 p-3.5 rounded-2xl cursor-pointer transition-all ${isActive ? (themeMode === 'light' ? 'bg-primary-500/10' : 'bg-white/10') : (themeMode === 'light' ? 'hover:bg-slate-100' : 'hover:bg-white/[0.03]')}`} style={{ borderLeft: !isVertical && isActive ? `4px solid ${colors.accent}` : '4px solid transparent', backgroundColor: isActive ? (themeMode === 'light' ? colors.accent + '10' : colors.accent + '15') : 'transparent' }}>
+                        <IconComp size={isVertical ? 24 : 20} style={{ color: isActive ? colors.accent : (themeMode === 'light' ? '#94a3b8' : colors.textInactive) }} />
+                        {!isVertical && menuType === 'Fixed' && <span className="text-[13px] font-bold truncate" style={{ color: isActive ? (themeMode === 'light' ? '#0f172a' : colors.textActive) : (themeMode === 'light' ? '#94a3b8' : colors.textInactive) }}>{p.label}</span>}
+                        {isVertical && isActive && <span className="text-[10px] font-black uppercase tracking-tighter absolute -bottom-1" style={{ color: colors.accent }}>{p.label}</span>}
                       </div>
                     );
                   })}
                 </div>
                 
-                {!isExportingImage && (
+                {!isExportingImage && !isVertical && (
                   <div className="mt-6 pt-6 border-t border-white/5 transition-opacity">
                     <div className="flex items-center gap-4 p-3.5 opacity-30"><Settings size={20} style={{ color: colors.textInactive }} />{menuType === 'Fixed' && <span className="text-[13px] font-bold" style={{ color: colors.textInactive }}>Configuración</span>}</div>
                   </div>
@@ -658,23 +880,32 @@ function Editor() {
               </motion.aside>
 
               {/* Preview Canvas */}
-              <div className="flex-1 p-8 flex flex-col overflow-hidden">
-                <header className="mb-6 flex justify-between items-end shrink-0">
-                  <div>
-                    <h1 className="text-2xl font-black tracking-tighter" style={{ color: themeMode === 'light' ? '#0f172a' : colors.textActive }}>{pages.find(p => p.id === activePageId)?.label}</h1>
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mt-1" style={{ color: themeMode === 'light' ? '#64748b' : colors.textInactive }}>Análisis de Rendimiento Operativo</p>
-                  </div>
-                  <div className={`flex gap-3 transition-opacity duration-300 ${isExportingImage ? 'opacity-0 invisible' : 'opacity-100'}`}>
-                    <button 
-                      onClick={() => setShowExportModal(true)}
-                      className={`bg-white/5 border ${themeMode === 'light' ? 'border-slate-200 bg-slate-100 text-slate-800' : 'border-white/10'} px-4 py-2 rounded-xl text-[10px] font-bold flex items-center gap-2 hover:bg-white/10 transition-colors`}
-                    >
-                      <Download size={14} /> EXPORTAR TEMA
-                    </button>
-                    <div className={`bg-white/5 border ${themeMode === 'light' ? 'border-slate-200 bg-slate-100' : 'border-white/10'} px-4 py-2 rounded-xl text-[10px] font-bold flex items-center gap-2 text-primary-400`}>
-                      <div className="w-1.5 h-1.5 rounded-full animate-pulse-glow bg-primary-500"></div>
-                      DATA LIVE
+              <div className="flex-1 p-8 flex flex-col overflow-hidden" style={{ order: isVertical ? 1 : 2 }}>
+                <header className={`mb-6 flex justify-between items-end shrink-0 ${isVertical ? 'flex-col items-start gap-4' : ''}`}>
+                  <div className={`flex justify-between items-center w-full ${isVertical ? 'mb-4' : ''}`}>
+                    <div>
+                      <h1 className={`${isVertical ? 'text-3xl' : 'text-2xl'} font-black tracking-tighter`} style={{ color: themeMode === 'light' ? '#0f172a' : colors.textActive }}>{pages.find(p => p.id === activePageId)?.label}</h1>
+                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mt-1" style={{ color: themeMode === 'light' ? '#64748b' : colors.textInactive }}>Análisis de Rendimiento Operativo</p>
                     </div>
+                    {isVertical && (
+                      <div className="w-12 h-12 flex items-center justify-center shrink-0">
+                        {logoUrl ? <img src={logoUrl} className="max-w-full max-h-full object-contain" /> : <div className="w-full h-full rounded-2xl bg-primary-500 flex items-center justify-center font-black text-2xl text-white shadow-lg">G</div>}
+                      </div>
+                    )}                    <div className={`flex gap-3 transition-opacity duration-300 ${isExportingImage ? 'opacity-0 invisible' : 'opacity-100'} ${isVertical ? 'w-full' : ''}`}>
+                      <button 
+                        onClick={handleFullscreen}
+                        className={`bg-white/5 border ${themeMode === 'light' ? 'border-slate-200 bg-slate-100 text-slate-800' : 'border-white/10'} px-4 py-2 rounded-xl text-[10px] font-bold flex items-center gap-2 hover:bg-white/10 transition-colors flex-1 justify-center`}
+                      >
+                        <Maximize2 size={14} /> PANTALLA COMPLETA
+                      </button>
+                      <button 
+                        onClick={() => setShowExportModal(true)}
+                        className={`bg-white/5 border ${themeMode === 'light' ? 'border-primary-500 bg-primary-500 text-white' : 'border-primary-500/50 bg-primary-500/20 text-primary-400'} px-4 py-2 rounded-xl text-[10px] font-bold flex items-center gap-2 hover:bg-primary-500 hover:text-white transition-all flex-1 justify-center`}
+                      >
+                        <Download size={14} /> EXPORTAR
+                      </button>
+                    </div>
+
                   </div>
                 </header>
 
@@ -682,150 +913,192 @@ function Editor() {
                   <div className="flex-1 flex flex-col gap-4 overflow-hidden">
                     {/* Horizontal Filter Bar */}
                     {showFilters && filterPosition === 'top' && (
-                      <div className="flex gap-4 shrink-0 transition-all duration-500">
-                        {['Fecha', 'Categoría', 'Región', 'Vendedor'].map((f, i) => (
-                           <div key={i} className={`flex-1 px-4 py-3 rounded-xl border flex items-center justify-between ${themeMode === 'light' ? 'bg-white border-slate-100' : 'bg-white/5 border-white/5'}`}>
-                              <span className="text-[10px] font-bold opacity-60 uppercase">{f}</span>
-                              <ChevronDown size={12} className="opacity-40" />
-                           </div>
-                        ))}
+                      <div className="flex gap-4 shrink-0 transition-all duration-500 overflow-x-auto no-scrollbar pb-2">
+                        {filters.map((f, i) => {
+                           const IconComp = ICON_MAP[f.icon] || Filter;
+                           return (
+                             <div key={f.id} className={`flex-1 min-w-[140px] px-5 py-3 rounded-2xl border flex flex-col gap-1 transition-all group relative ${themeMode === 'light' ? 'bg-white border-slate-100 shadow-sm' : 'bg-white/5 border-white/5'}`}>
+                                <div className="flex items-center justify-between pointer-events-none">
+                                  <div className="flex items-center gap-2 -mt-1.5">
+                                    <IconComp size={10} className="text-primary-500" />
+                                    <span className="text-[11px] font-black opacity-40 uppercase tracking-tighter" style={{ color: colors.textInactive }}>{f.label}</span>
+                                  </div>
+                                  <ChevronDown size={10} className="opacity-20" />
+                                </div>
+                                <div className={`h-6 mt-1 rounded-lg ${themeMode === 'light' ? 'bg-slate-50' : 'bg-white/5'} flex items-center px-2`}>
+                                   <span className="text-[10px] font-bold opacity-30">Todo</span>
+                                </div>
+                             </div>
+                           )
+                        })}
                       </div>
                     )}
 
-                    <div 
-                      id="dashboard-preview-main"
-                      style={{ 
-                        backgroundColor: themeMode === 'light' ? '#f8fafc' : (colors.canvas || '#0a0b14'),
-                        gridTemplateRows: activeLayout === 'standard' ? '0.8fr 1fr 1fr' : 
-                                         activeLayout === 'executive' ? '0.8fr 1.2fr' :
-                                         activeLayout === 'analytical' ? '0.8fr 1fr 1fr 1fr' :
-                                         'repeat(6, 1fr)'
-                      }}
-                      className={`flex-1 grid gap-4 transition-all duration-700 p-6 rounded-[20px] border ${themeMode === 'light' ? 'border-slate-100' : 'border-white/5'} ${
-                        activeLayout === 'standard' ? 'grid-cols-4' : 
-                        activeLayout === 'executive' ? 'grid-cols-4' : 
-                        activeLayout === 'analytical' ? 'grid-cols-4' : 
-                        'grid-cols-6'
-                      }`}
-                    >
-                      {/* KPI 1 */}
-                      <div className={`${
-                        activeLayout === 'standard' ? 'col-span-1 row-span-1' : 
-                        activeLayout === 'executive' ? 'col-span-1 row-span-1' : 
-                        activeLayout === 'analytical' ? 'col-span-1 row-span-1' : 
-                        'col-span-2 row-span-2'
-                      }`}>
-                        <KpiCard title="Ingresos Totales" value="$42.1k" change="+12%" color={colors.accent} icon={TrendingUp} hideContent={isExportingImage} themeMode={themeMode} />
-                      </div>
-
-                      {/* KPI 2 */}
-                      <div className={`${
-                        activeLayout === 'standard' ? 'col-span-1 row-span-1' : 
-                        activeLayout === 'executive' ? 'col-span-1 row-span-1' : 
-                        activeLayout === 'analytical' ? 'col-span-1 row-span-1' : 
-                        'col-span-2 row-span-2'
-                      }`}>
-                        <KpiCard title="Conversion" value="3.2%" change="-1%" color="#f87171" icon={Activity} hideContent={isExportingImage} themeMode={themeMode} />
-                      </div>
-
-                      {/* KPI 3 */}
-                      <div className={`${
-                        activeLayout === 'standard' ? 'col-span-1 row-span-1' : 
-                        activeLayout === 'executive' ? 'col-span-1 row-span-1' : 
-                        activeLayout === 'analytical' ? 'col-span-1 row-span-1' : 
-                        'col-span-2 row-span-2'
-                      }`}>
-                        <KpiCard title="Pedidos" value="1,290" change="+8%" color={colors.accent} icon={ShoppingCart} hideContent={isExportingImage} themeMode={themeMode} />
-                      </div>
-
-                      {/* Donut / Secondary Metric */}
-                      <div className={`${
-                        activeLayout === 'standard' ? 'col-span-1 row-span-1' : 
-                        activeLayout === 'executive' ? 'col-span-1 row-span-1' : 
-                        activeLayout === 'analytical' ? 'col-span-1 row-span-2' : 
-                        'col-span-2 row-span-3'
-                      }`}>
-                        <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} h-full flex items-center justify-center transition-all duration-500`}>
-                           <DonutPlaceholder color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
-                        </div>
-                      </div>
-
-                      {/* Main Chart */}
-                      <div className={`${
-                        activeLayout === 'standard' ? 'col-span-3 row-span-2' : 
-                        activeLayout === 'executive' ? 'col-span-4 row-span-1' : 
-                        activeLayout === 'analytical' ? 'col-span-3 row-span-2' : 
-                        'col-span-4 row-span-3'
-                      }`}>
-                        <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} h-full transition-all duration-500`}>
-                           <ChartPlaceholder color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
-                        </div>
-                      </div>
-
-                      {/* KPI 4 / Rebote */}
-                      <div className={`${
-                        activeLayout === 'standard' ? 'hidden' : 
-                        activeLayout === 'executive' ? 'hidden' : 
-                        activeLayout === 'analytical' ? 'col-span-1 row-span-1' : 
-                        'col-span-2 row-span-1'
-                      }`}>
-                        <KpiCard title="Rebote" value="42%" change="+2%" color="#fbbf24" icon={Zap} hideContent={isExportingImage} themeMode={themeMode} />
-                      </div>
-
-                      {/* Layout Specific Components */}
-                      {activeLayout === 'standard' && (
-                        <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} col-span-1 row-span-2 transition-all duration-500`}>
-                           <TopPerformers color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
-                        </div>
-                      )}
-
-                      {activeLayout === 'modern' && (
-                        <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} col-span-2 row-span-1 transition-all duration-500`}>
-                           <TopPerformers color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
-                        </div>
-                      )}
-
-                      {activeLayout === 'modern' && (
-                        <div className={`col-span-2 row-span-1 transition-all duration-500 ${isExportingImage ? 'opacity-0' : 'opacity-100'} ${themeMode === 'light' ? 'light-card border-primary-500/10' : 'glass-card border-primary-500/20 bg-primary-500/10'}`}>
-                          <div className="flex items-center gap-4 h-full px-6">
-                            <div className="p-3 rounded-xl bg-primary-500 text-white shadow-lg shadow-primary-500/30"><Target size={20} /></div>
-                            <div>
-                              <p className={`text-[10px] font-bold uppercase ${themeMode === 'light' ? 'text-slate-400' : 'text-slate-400'}`}>Meta Lograda</p>
-                              <p className={`text-lg font-black ${themeMode === 'light' ? 'text-slate-800' : 'text-white'}`}>94.2%</p>
+                      <div 
+                        id="dashboard-preview-main"
+                        style={{ 
+                          backgroundColor: themeMode === 'light' ? '#f8fafc' : (colors.canvas || '#0a0b14'),
+                          gridTemplateRows: activeLayout === 'standard' ? '0.8fr 1fr 1fr' : 
+                                           activeLayout === 'executive' ? '0.8fr 1.2fr' :
+                                           activeLayout === 'analytical' ? '0.8fr 1fr 1fr 1fr' :
+                                           'repeat(6, 1fr)'
+                        }}
+                        className={`flex-1 grid gap-4 transition-all duration-700 p-6 rounded-[20px] border ${themeMode === 'light' ? 'border-slate-100' : 'border-white/5'} ${getGridCols()}`}
+                      >
+                       {activeLayout === 'custom' ? (
+                          <>
+                            {customCards.map((c) => {
+                              const CustomIcon = ICON_MAP[c.icon] || BarChart;
+                              const cardSpan = `col-span-${c.cols || 2} row-span-${c.rows || 1}`;
+                              return (
+                                <div key={c.id} className={cardSpan}>
+                                  {c.type === 'kpi' && <KpiCard title={c.title} value={c.value} change={c.change} color={c.color || colors.accent} icon={CustomIcon} hideContent={isExportingImage} themeMode={themeMode} />}
+                                  {c.type === 'chart' && (
+                                    <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} h-full transition-all duration-500`}>
+                                      <ChartPlaceholder color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
+                                    </div>
+                                  )}
+                                  {c.type === 'donut' && (
+                                    <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} h-full flex items-center justify-center transition-all duration-500`}>
+                                      <DonutPlaceholder color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
+                                    </div>
+                                  )}
+                                  {c.type === 'table' && (
+                                    <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} h-full transition-all duration-500 overflow-hidden`}>
+                                      <DataTable color={colors.accent} title={c.title} hideContent={isExportingImage} themeMode={themeMode} />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </>
+                        ) : (
+                          <>
+                            {/* KPI 1 */}
+                            <div className={`${
+                              activeLayout === 'standard' ? (isVertical ? 'col-span-1 row-span-1' : (isSquareish ? 'col-span-1 row-span-1' : 'col-span-1 row-span-1')) : 
+                              activeLayout === 'executive' ? 'col-span-1 row-span-1' : 
+                              activeLayout === 'analytical' ? 'col-span-1 row-span-1' : 
+                              (isVertical ? 'col-span-1 row-span-2' : 'col-span-2 row-span-2')
+                            }`}>
+                              <KpiCard title="Ingresos" value="$42.1k" change="+12%" color={colors.accent} icon={TrendingUp} hideContent={isExportingImage} themeMode={themeMode} />
                             </div>
-                          </div>
-                        </div>
-                      )}
 
-                      {activeLayout === 'analytical' && (
-                        <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} col-span-4 row-span-1 transition-all duration-500 overflow-hidden`}>
-                           <DataTable color={colors.accent} title="Desglose por Canal" hideContent={isExportingImage} themeMode={themeMode} />
-                        </div>
-                      )}
+                            {/* KPI 2 */}
+                            <div className={`${
+                              activeLayout === 'standard' ? (isVertical ? 'col-span-1 row-span-1' : (isSquareish ? 'col-span-1 row-span-1' : 'col-span-1 row-span-1')) : 
+                              activeLayout === 'executive' ? 'col-span-1 row-span-1' : 
+                              activeLayout === 'analytical' ? 'col-span-1 row-span-1' : 
+                              (isVertical ? 'col-span-1 row-span-2' : 'col-span-2 row-span-2')
+                            }`}>
+                              <KpiCard title="Conversion" value="3.2%" change="-1%" color="#f87171" icon={Activity} hideContent={isExportingImage} themeMode={themeMode} />
+                            </div>
+
+                            {/* KPI 3 */}
+                            <div className={`${
+                              activeLayout === 'standard' ? (isVertical ? 'col-span-1 row-span-1' : (isSquareish ? 'col-span-1 row-span-1' : 'col-span-1 row-span-1')) : 
+                              activeLayout === 'executive' ? 'col-span-1 row-span-1' : 
+                              activeLayout === 'analytical' ? 'col-span-1 row-span-1' : 
+                              (isVertical ? 'col-span-1 row-span-2' : 'col-span-2 row-span-2')
+                            }`}>
+                              <KpiCard title="Pedidos" value="1,290" change="+8%" color={colors.accent} icon={ShoppingCart} hideContent={isExportingImage} themeMode={themeMode} />
+                            </div>
+
+                            {/* Donut / Secondary Metric */}
+                            <div className={`${
+                              activeLayout === 'standard' ? 'col-span-1 row-span-1' : 
+                              activeLayout === 'executive' ? (isVertical ? 'col-span-2 row-span-2' : 'col-span-1 row-span-1') : 
+                              activeLayout === 'analytical' ? (isVertical ? 'col-span-2 row-span-2' : 'col-span-1 row-span-2') : 
+                              (isVertical ? 'col-span-2 row-span-2' : 'col-span-2 row-span-3')
+                            }`}>
+                              <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} h-full flex items-center justify-center transition-all duration-500`}>
+                                <DonutPlaceholder color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
+                              </div>
+                            </div>
+
+                            {/* Main Chart */}
+                            <div className={`${
+                              activeLayout === 'standard' ? (isVertical ? 'col-span-2 row-span-2' : (isSquareish ? 'col-span-3 row-span-2' : 'col-span-3 row-span-2')) : 
+                              activeLayout === 'executive' ? (isVertical ? 'col-span-2 row-span-3' : 'col-span-4 row-span-1') : 
+                              activeLayout === 'analytical' ? (isVertical ? 'col-span-2 row-span-2' : 'col-span-3 row-span-2') : 
+                              (isVertical ? 'col-span-2 row-span-3' : 'col-span-4 row-span-3')
+                            }`}>
+                              <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} h-full transition-all duration-500`}>
+                                <ChartPlaceholder color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
+                              </div>
+                            </div>
+
+                            {/* KPI 4 / Rebote */}
+                            <div className={`${
+                              activeLayout === 'standard' ? 'hidden' : 
+                              activeLayout === 'executive' ? 'hidden' : 
+                              activeLayout === 'analytical' ? 'col-span-1 row-span-1' : 
+                              'col-span-2 row-span-1'
+                            }`}>
+                              <KpiCard title="Rebote" value="42%" change="+2%" color="#fbbf24" icon={Zap} hideContent={isExportingImage} themeMode={themeMode} />
+                            </div>
+
+                            {/* Layout Specific Components */}
+                            {activeLayout === 'standard' && (
+                              <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} col-span-1 row-span-2 transition-all duration-500`}>
+                                <TopPerformers color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
+                              </div>
+                            )}
+
+                            {activeLayout === 'modern' && (
+                              <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} col-span-2 row-span-1 transition-all duration-500`}>
+                                <TopPerformers color={colors.accent} hideContent={isExportingImage} themeMode={themeMode} />
+                              </div>
+                            )}
+
+                            {activeLayout === 'modern' && (
+                              <div className={`col-span-2 row-span-1 transition-all duration-500 ${isExportingImage ? 'opacity-0' : 'opacity-100'} ${themeMode === 'light' ? 'light-card border-primary-500/10' : 'glass-card border-primary-500/20 bg-primary-500/10'}`}>
+                                <div className="flex items-center gap-4 h-full px-6">
+                                  <div className="p-3 rounded-xl bg-primary-500 text-white shadow-lg shadow-primary-500/30"><Target size={20} /></div>
+                                  <div>
+                                    <p className={`text-[10px] font-bold uppercase ${themeMode === 'light' ? 'text-slate-400' : 'text-slate-400'}`}>Meta Lograda</p>
+                                    <p className={`text-lg font-black ${themeMode === 'light' ? 'text-slate-800' : 'text-white'}`}>94.2%</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {activeLayout === 'analytical' && (
+                              <div className={`${themeMode === 'light' ? 'light-card' : 'glass-card'} col-span-4 row-span-1 transition-all duration-500 overflow-hidden`}>
+                                <DataTable color={colors.accent} title="Desglose por Canal" hideContent={isExportingImage} themeMode={themeMode} />
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
                   {/* Vertical Filter Bar (Right Sidebar style) */}
                   {showFilters && filterPosition === 'right' && (
-                    <div className={`w-64 shrink-0 p-6 rounded-[20px] border flex flex-col gap-6 animate-in slide-in-from-right duration-500 ${themeMode === 'light' ? 'bg-white border-slate-200 shadow-sm' : 'bg-white/5 border-white/5 shadow-2xl'}`}>
+                    <div className={`w-64 shrink-0 p-6 rounded-[20px] border flex flex-col gap-4 animate-in slide-in-from-right duration-500 ${themeMode === 'light' ? 'bg-white border-slate-200 shadow-sm' : 'bg-white/5 border-white/5 shadow-2xl'}`}>
                       <div className="flex items-center justify-between border-b border-white/5 pb-4">
                         <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Filtros Avanzados</span>
                         <Filter size={14} className="text-primary-400" />
                       </div>
-                      <div className="space-y-6">
-                        {['Fecha de Datos', 'Estado de Orden', 'Canal de Distribución'].map((f, i) => (
-                           <div key={i} className="space-y-2">
-                             <label className="text-[9px] font-bold uppercase text-slate-500">{f}</label>
-                             <div className={`px-4 py-3 rounded-xl border flex items-center justify-between ${themeMode === 'light' ? 'bg-slate-50 border-slate-100' : 'bg-black/20 border-white/5'}`}>
-                               <span className="text-xs opacity-40">Seleccionar...</span>
-                               <ChevronDown size={14} className="opacity-20" />
+                      <div className="space-y-4 overflow-y-auto no-scrollbar pr-1">
+                        {filters.map((f, i) => {
+                           const IconComp = ICON_MAP[f.icon] || Filter;
+                           return (
+                             <div key={f.id} className="space-y-2">
+                               <div className="flex items-center gap-2">
+                                 <IconComp size={10} className="text-primary-500" />
+                                 <label className="text-[10px] font-black uppercase text-slate-500 tracking-tighter" style={{ color: colors.textInactive }}>{f.label}</label>
+                               </div>
+                               <div className={`px-4 py-2.5 rounded-xl border flex items-center justify-between ${themeMode === 'light' ? 'bg-slate-50 border-slate-100' : 'bg-black/20 border-white/5'}`}>
+                                 <span className="text-[10px] opacity-40">Seleccionar...</span>
+                                 <ChevronDown size={12} className="opacity-20" />
+                               </div>
                              </div>
-                           </div>
-                        ))}
+                           )
+                        })}
                       </div>
-                      <div className="mt-auto space-y-2">
-                        <button className="w-full py-3 bg-primary-500 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider">Aplicar Filtros</button>
-                        <button className="w-full py-3 bg-white/5 text-slate-400 rounded-xl text-[10px] font-bold uppercase tracking-wider">Limpiar</button>
+                      <div className="mt-auto pt-4 border-t border-white/5 space-y-2">
+                        <button className="w-full py-3 bg-primary-500 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider">Aplicar</button>
                       </div>
                     </div>
                   )}
